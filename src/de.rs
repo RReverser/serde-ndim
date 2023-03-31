@@ -130,3 +130,25 @@ impl<'de, T: Deserialize<'de>> DeserializeSeed<'de> for &mut Context<T> {
         deserializer.deserialize_any(self)
     }
 }
+
+pub trait MakeNDim {
+    type Item;
+
+    fn from_shape_and_data(shape: Vec<usize>, data: Vec<Self::Item>) -> Self;
+}
+
+pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+where
+    T: MakeNDim,
+    T::Item: Deserialize<'de>,
+    D: Deserializer<'de>,
+{
+    let mut context = Context {
+        data: Vec::new(),
+        shape: Vec::new(),
+        current_depth: 0,
+        first_pass: true,
+    };
+    deserializer.deserialize_any(&mut context)?;
+    Ok(T::from_shape_and_data(context.shape, context.data))
+}
