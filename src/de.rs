@@ -9,15 +9,16 @@ macro_rules! forward_visitors {
     )*);
 }
 
-struct ShapeCursor {
-    shapes: Vec<usize>,
+struct Context<T> {
+    data: Vec<T>,
+    shape: Vec<usize>,
     current_depth: usize,
     first_pass: bool,
 }
 
-impl ShapeCursor {
+impl<'de, T: Deserialize<'de>> Context<T> {
     fn got_number<E: Error>(&mut self) -> Result<(), E> {
-        if self.shapes.get(self.current_depth).is_some() {
+        if self.shape.get(self.current_depth).is_some() {
             // We've seen a sequence at this depth before, but got a number now.
             return Err(E::invalid_type(
                 serde::de::Unexpected::Other("a single number"),
@@ -30,55 +31,11 @@ impl ShapeCursor {
         Ok(())
     }
 
-    fn start_sequence<E: Error>(&mut self) -> Result<Option<usize>, E> {
-        let maybe_len = if self.first_pass {
-            // We're still in the first pass, so we don't know the shape yet.
-            debug_assert_eq!(self.current_depth, self.shapes.len());
-            // Just push a `0` placeholder so that we could recurse deeper.
-            // It will be replaced with an actual length once we finish this
-            // sequence for the first time.
-            self.shapes.push(0);
-            None
-        } else {
-            // This is not the first pass anymore, so we've seen all the dimensions.
-            // Check that the current dimension has seen a sequence before and return
-            // its expected length.
-            let shape_len = self
-                .shapes
-                .get(self.current_depth)
-                .copied()
-                .ok_or_else(|| E::invalid_type(serde::de::Unexpected::Seq, &"a single number"))?;
-
-            Some(shape_len)
-        };
-        // Move cursor forward.
-        self.current_depth += 1;
-        Ok(maybe_len)
-    }
-
-    fn end_sequence(&mut self) {
-        // Move cursor back.
-        self.current_depth -= 1;
-    }
-
-    fn set_sequence_length(&mut self, len: usize) {
-        // Replace the placeholder with the actual length.
-        debug_assert_eq!(self.shapes[self.current_depth], 0);
-        self.shapes[self.current_depth] = len;
-    }
-}
-
-struct Context<T> {
-    data: Vec<T>,
-    shapes: ShapeCursor,
-}
-
-impl<'de, T: Deserialize<'de>> Context<T> {
     fn deserialize_num_from<D: Deserializer<'de>>(
         &mut self,
         deserializer: D,
     ) -> Result<(), D::Error> {
-        self.shapes.got_number()?;
+        self.got_number()?;
         let value = T::deserialize(deserializer)?;
         self.data.push(value);
         Ok(())
@@ -99,29 +56,41 @@ impl<'de, T: Deserialize<'de>> Visitor<'de> for &mut Context<T> {
     fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
         // The code paths for when we know the shape and when we don't are quite different,
         // so we split them into two separate branches.
-        match self.shapes.start_sequence()? {
-            Some(expected_len) => {
-                for _ in 0..expected_len {
-                    seq.next_element_seed(&mut *self)?
-                        .ok_or_else(|| Error::custom("expected more elements"))?;
-                }
-                // We've seen all the expected elements in this sequence.
-                // Ensure there are no more elements.
-                if seq.next_element::<IgnoredAny>()?.is_some() {
-                    return Err(Error::custom("expected end of sequence"));
-                }
-                self.shapes.end_sequence();
+        if self.first_pass {
+            // We're still in the first pass, so we don't know the shape yet.
+            debug_assert_eq!(self.current_depth, self.shape.len());
+            // Just push a `0` placeholder so that we could recurse deeper.
+            // It will be replaced with an actual length once we finish this
+            // sequence for the first time.
+            self.shape.push(0);
+            self.current_depth += 1;
+            // Consume & count all the elements.
+            let mut len = 0;
+            while seq.next_element_seed(&mut *self)?.is_some() {
+                len += 1;
             }
-            None => {
-                // We're still in the first pass, so we don't know the shape yet.
-                // Consume & count all the elements.
-                let mut len = 0;
-                while seq.next_element_seed(&mut *self)?.is_some() {
-                    len += 1;
-                }
-                self.shapes.end_sequence();
-                self.shapes.set_sequence_length(len);
+            self.current_depth -= 1;
+            // Replace the placeholder with the actual length.
+            debug_assert_eq!(self.shape[self.current_depth], 0);
+            self.shape[self.current_depth] = len;
+        } else {
+            // This is not the first pass anymore, so we've seen all the dimensions.
+            // Check that the current dimension has seen a sequence before and return
+            // its expected length.
+            let expected_len = self.shape.get(self.current_depth).copied().ok_or_else(|| {
+                Error::invalid_type(serde::de::Unexpected::Seq, &"a single number")
+            })?;
+            // Consume the expected number of elements.
+            for _ in 0..expected_len {
+                seq.next_element_seed(&mut *self)?
+                    .ok_or_else(|| Error::custom("expected more elements"))?;
             }
+            // We've seen all the expected elements in this sequence.
+            // Ensure there are no more elements.
+            if seq.next_element::<IgnoredAny>()?.is_some() {
+                return Err(Error::custom("expected end of sequence"));
+            }
+            self.current_depth -= 1;
         }
         Ok(())
     }
