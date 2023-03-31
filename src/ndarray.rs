@@ -2,6 +2,7 @@ use crate::MakeNDim;
 use ndarray::{Array, ArrayD, Dim, IntoDimension};
 
 impl<T> MakeNDim for ArrayD<T> {
+    type Shape = Box<[usize]>;
     type Item = T;
 
     fn from_shape_and_data(shape: Box<[usize]>, data: Vec<Self::Item>) -> Self {
@@ -14,7 +15,8 @@ impl<T> MakeNDim for ArrayD<T> {
 // so we have to use one as well.
 macro_rules! impl_ndim {
     ($($N:literal)*) => ($(
-        impl<T> MakeNDim<[usize; $N]> for Array<T, Dim<[usize; $N]>> {
+        impl<T> MakeNDim for Array<T, Dim<[usize; $N]>> {
+            type Shape = [usize; $N];
             type Item = T;
 
             fn from_shape_and_data(shape: [usize; $N], data: Vec<Self::Item>) -> Self {

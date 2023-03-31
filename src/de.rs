@@ -182,16 +182,16 @@ impl<'de, T: Deserialize<'de> + Debug, S: Shape> DeserializeSeed<'de> for &mut C
     }
 }
 
-pub trait MakeNDim<S: Shape = Box<[usize]>> {
+pub trait MakeNDim {
+    type Shape: Shape;
     type Item;
 
-    fn from_shape_and_data(shape: S, data: Vec<Self::Item>) -> Self;
+    fn from_shape_and_data(shape: Self::Shape, data: Vec<Self::Item>) -> Self;
 }
 
-pub fn deserialize<'de, S, A, D>(deserializer: D) -> Result<A, D::Error>
+pub fn deserialize<'de, A, D>(deserializer: D) -> Result<A, D::Error>
 where
-    S: Shape,
-    A: MakeNDim<S>,
+    A: MakeNDim,
     A::Item: Deserialize<'de> + Debug,
     D: Deserializer<'de>,
 {
