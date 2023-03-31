@@ -1,0 +1,9 @@
+---
+source: src/ndarray.rs
+assertion_line: 64
+expression: "deserialize_json!([[1, 2, 3], [4, 5, 6]]).unwrap_err()"
+---
+
+ 1 | [[1, 2, 3], [4, 5, 6]]
+   |    ^ didn't reach the expected maximum depth 3, got 2 at line 1 column 3
+

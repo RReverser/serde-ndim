@@ -1,0 +1,9 @@
+---
+source: src/ndarray.rs
+assertion_line: 81
+expression: "deserialize_json!([[[false]]]).unwrap_err()"
+---
+
+ 1 | [[[false]]]
+   |         ^ invalid type: boolean `false`, expected a sequence or a single number at line 1 column 8
+

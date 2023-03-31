@@ -11,6 +11,7 @@ ndarray = { version = "0.15", default-features = false, optional = true }
 serde = "1.0"
 
 [dev-dependencies]
+format_serde_error = { version = "0.3.0", default-features = false, features = ["serde_json"] }
 insta = "1.29.0"
 serde-ndim = { path = ".", features = ["nalgebra", "ndarray", "test"] }
 serde_json = "1.0.95"

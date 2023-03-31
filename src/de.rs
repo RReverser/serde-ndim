@@ -68,6 +68,14 @@ impl<'de, T: Debug + Deserialize<'de>, S: Shape> Context<T, S> {
                 // Once we've seen a numeric value for the first time, this means we reached the innermost dimension.
                 // From now on, start collecting shape info.
                 // To start, allocate the dimension lenghs with placeholders.
+                if let Some(max_depth) = S::MAX_DEPTH {
+                    if self.current_depth != max_depth {
+                        return Err(Error::custom(format_args!(
+                            "didn't reach the expected maximum depth {max_depth}, got {current_depth}",
+                            current_depth = self.current_depth
+                        )));
+                    }
+                }
                 self.shape = Some(S::new_zeroed(self.current_depth));
             }
         }
@@ -93,7 +101,7 @@ impl<'de, T: Deserialize<'de> + Debug, S: Shape> Visitor<'de> for &mut Context<T
     type Value = ();
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("a sequence or a single element")
+        formatter.write_str("a sequence or a single number")
     }
 
     fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
@@ -124,7 +132,7 @@ impl<'de, T: Deserialize<'de> + Debug, S: Shape> Visitor<'de> for &mut Context<T
             self.current_depth += 1;
             if let Some(max_depth) = S::MAX_DEPTH {
                 if self.current_depth > max_depth {
-                    return Err(Error::custom(format!(
+                    return Err(Error::custom(format_args!(
                         "maximum depth of {} exceeded",
                         max_depth
                     )));
