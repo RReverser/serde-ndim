@@ -6,6 +6,14 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nalgebra = { version = "*", default-features = false, features = ["alloc"], optional = true }
+nalgebra = { version = "0.32", default-features = false, features = ["alloc"], optional = true }
 ndarray = { version = "0.15", default-features = false, optional = true }
-serde = "1.0.159"
+serde = "1.0"
+
+[dev-dependencies]
+insta = "1.29.0"
+serde-ndim = { path = ".", features = ["nalgebra", "ndarray", "test"] }
+serde_json = "1.0.95"
+
+[features]
+test = ["nalgebra/macros", "serde/derive"]

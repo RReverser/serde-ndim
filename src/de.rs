@@ -1,6 +1,7 @@
 use serde::de::{DeserializeSeed, Error, IgnoredAny, IntoDeserializer, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer};
 use std::borrow::BorrowMut;
+use std::fmt::Debug;
 
 macro_rules! forward_visitors {
     ($(fn $method:ident ($arg:ty);)*) => ($(
@@ -10,7 +11,7 @@ macro_rules! forward_visitors {
     )*);
 }
 
-pub trait Shape: BorrowMut<[usize]> {
+pub trait Shape: BorrowMut<[usize]> + Debug {
     const MAX_DEPTH: Option<usize>;
 
     fn new_zeroed(depth: usize) -> Self;
@@ -43,13 +44,14 @@ impl<const DIMS: usize> Shape for [usize; DIMS] {
     }
 }
 
+#[derive(Debug)]
 struct Context<T, S> {
     data: Vec<T>,
     shape: Option<S>,
     current_depth: usize,
 }
 
-impl<'de, T: Deserialize<'de>, S: Shape> Context<T, S> {
+impl<'de, T: Debug + Deserialize<'de>, S: Shape> Context<T, S> {
     fn got_number<E: Error>(&mut self) -> Result<(), E> {
         match &self.shape {
             Some(shape) => {
@@ -62,6 +64,7 @@ impl<'de, T: Deserialize<'de>, S: Shape> Context<T, S> {
                 }
             }
             None => {
+                // We've seen a sequence at this depth before, but got a number now.
                 // Once we've seen a numeric value for the first time, this means we reached the innermost dimension.
                 // From now on, start collecting shape info.
                 // To start, allocate the dimension lenghs with placeholders.
@@ -86,7 +89,7 @@ impl<'de, T: Deserialize<'de>, S: Shape> Context<T, S> {
     }
 }
 
-impl<'de, T: Deserialize<'de>, S: Shape> Visitor<'de> for &mut Context<T, S> {
+impl<'de, T: Deserialize<'de> + Debug, S: Shape> Visitor<'de> for &mut Context<T, S> {
     type Value = ();
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -103,6 +106,7 @@ impl<'de, T: Deserialize<'de>, S: Shape> Visitor<'de> for &mut Context<T, S> {
             let expected_len = shape.shape_at(self.current_depth).ok_or_else(|| {
                 Error::invalid_type(serde::de::Unexpected::Seq, &"a single number")
             })?;
+            self.current_depth += 1;
             // Consume the expected number of elements.
             for _ in 0..expected_len {
                 seq.next_element_seed(&mut *self)?
@@ -167,7 +171,7 @@ impl<'de, T: Deserialize<'de>, S: Shape> Visitor<'de> for &mut Context<T, S> {
     }
 }
 
-impl<'de, T: Deserialize<'de>, S: Shape> DeserializeSeed<'de> for &mut Context<T, S> {
+impl<'de, T: Deserialize<'de> + Debug, S: Shape> DeserializeSeed<'de> for &mut Context<T, S> {
     type Value = ();
 
     fn deserialize<D>(self, deserializer: D) -> Result<(), D::Error>
@@ -184,11 +188,11 @@ pub trait MakeNDim<S: Shape = Box<[usize]>> {
     fn from_shape_and_data(shape: S, data: Vec<Self::Item>) -> Self;
 }
 
-pub fn deserialize<'de, S, T, D>(deserializer: D) -> Result<T, D::Error>
+pub fn deserialize<'de, S, A, D>(deserializer: D) -> Result<A, D::Error>
 where
     S: Shape,
-    T: MakeNDim<S>,
-    T::Item: Deserialize<'de>,
+    A: MakeNDim<S>,
+    A::Item: Deserialize<'de> + Debug,
     D: Deserializer<'de>,
 {
     let mut context = Context {
@@ -197,5 +201,5 @@ where
         current_depth: 0,
     };
     deserializer.deserialize_any(&mut context)?;
-    Ok(T::from_shape_and_data(context.shape.unwrap(), context.data))
+    Ok(A::from_shape_and_data(context.shape.unwrap(), context.data))
 }
