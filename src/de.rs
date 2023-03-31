@@ -33,6 +33,7 @@ impl ShapeCursor {
     fn start_sequence<E: Error>(&mut self) -> Result<Option<usize>, E> {
         let maybe_len = if self.first_pass {
             // We're still in the first pass, so we don't know the shape yet.
+            debug_assert_eq!(self.current_depth, self.shapes.len());
             // Just push a `0` placeholder so that we could recurse deeper.
             // It will be replaced with an actual length once we finish this
             // sequence for the first time.
@@ -62,6 +63,7 @@ impl ShapeCursor {
 
     fn set_sequence_length(&mut self, len: usize) {
         // Replace the placeholder with the actual length.
+        debug_assert_eq!(self.shapes[self.current_depth], 0);
         self.shapes[self.current_depth] = len;
     }
 }
