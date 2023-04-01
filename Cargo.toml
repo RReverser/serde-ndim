@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+arrayvec = "0.7.2"
 nalgebra = { version = "0.32", default-features = false, features = ["alloc"], optional = true }
 ndarray = { version = "0.15", default-features = false, optional = true }
 serde = "1.0"

@@ -1,3 +1,4 @@
+use arrayvec::ArrayVec;
 use serde::de::{DeserializeSeed, Error, IgnoredAny, IntoDeserializer, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer};
 use std::borrow::BorrowMut;
@@ -12,7 +13,8 @@ macro_rules! forward_visitors {
 }
 
 pub trait Shape: BorrowMut<[usize]> + Debug {
-    const MAX_DEPTH: Option<usize>;
+    const MIN_DEPTH: usize;
+    const MAX_DEPTH: usize;
 
     fn new_zeroed(depth: usize) -> Self;
 
@@ -28,7 +30,8 @@ pub trait Shape: BorrowMut<[usize]> + Debug {
 }
 
 impl Shape for Box<[usize]> {
-    const MAX_DEPTH: Option<usize> = None;
+    const MIN_DEPTH: usize = 0;
+    const MAX_DEPTH: usize = usize::MAX;
 
     fn new_zeroed(depth: usize) -> Self {
         vec![0; depth].into_boxed_slice()
@@ -36,11 +39,24 @@ impl Shape for Box<[usize]> {
 }
 
 impl<const DIMS: usize> Shape for [usize; DIMS] {
-    const MAX_DEPTH: Option<usize> = Some(DIMS);
+    const MIN_DEPTH: usize = DIMS;
+    const MAX_DEPTH: usize = DIMS;
 
     fn new_zeroed(depth: usize) -> Self {
-        assert_eq!(depth, DIMS);
+        debug_assert_eq!(depth, DIMS);
         [0; DIMS]
+    }
+}
+
+impl<const MAX_DIMS: usize> Shape for ArrayVec<usize, MAX_DIMS> {
+    const MIN_DEPTH: usize = 0;
+    const MAX_DEPTH: usize = MAX_DIMS;
+
+    fn new_zeroed(depth: usize) -> Self {
+        debug_assert!(depth <= MAX_DIMS);
+        let mut shape = ArrayVec::new();
+        shape.extend(std::iter::repeat(0).take(depth));
+        shape
     }
 }
 
@@ -68,13 +84,12 @@ impl<'de, T: Debug + Deserialize<'de>, S: Shape> Context<T, S> {
                 // Once we've seen a numeric value for the first time, this means we reached the innermost dimension.
                 // From now on, start collecting shape info.
                 // To start, allocate the dimension lenghs with placeholders.
-                if let Some(max_depth) = S::MAX_DEPTH {
-                    if self.current_depth != max_depth {
-                        return Err(Error::custom(format_args!(
-                            "didn't reach the expected maximum depth {max_depth}, got {current_depth}",
-                            current_depth = self.current_depth
-                        )));
-                    }
+                if self.current_depth < S::MIN_DEPTH {
+                    return Err(Error::custom(format_args!(
+                        "didn't reach the expected minimum depth {}, got {}",
+                        S::MIN_DEPTH,
+                        self.current_depth,
+                    )));
                 }
                 self.shape = Some(S::new_zeroed(self.current_depth));
             }
@@ -130,13 +145,11 @@ impl<'de, T: Deserialize<'de> + Debug, S: Shape> Visitor<'de> for &mut Context<T
             // We're still in the first pass, so we don't know the shape yet.
             debug_assert!(self.shape.is_none());
             self.current_depth += 1;
-            if let Some(max_depth) = S::MAX_DEPTH {
-                if self.current_depth > max_depth {
-                    return Err(Error::custom(format_args!(
-                        "maximum depth of {} exceeded",
-                        max_depth
-                    )));
-                }
+            if self.current_depth > S::MAX_DEPTH {
+                return Err(Error::custom(format_args!(
+                    "maximum depth of {} exceeded",
+                    S::MAX_DEPTH
+                )));
             }
             // Consume & count all the elements.
             let mut len = 0;
