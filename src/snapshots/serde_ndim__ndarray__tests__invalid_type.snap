@@ -1,6 +1,5 @@
 ---
 source: src/ndarray.rs
-assertion_line: 81
 expression: "deserialize_json!([[[false]]]).unwrap_err()"
 ---
 

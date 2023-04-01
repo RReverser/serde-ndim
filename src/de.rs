@@ -13,49 +13,49 @@ macro_rules! forward_visitors {
 }
 
 pub trait Shape: BorrowMut<[usize]> + Debug {
-    const MIN_DEPTH: usize;
-    const MAX_DEPTH: usize;
+    const MIN_DIMS: usize;
+    const MAX_DIMS: usize;
 
-    fn new_zeroed(depth: usize) -> Self;
+    fn new_zeroed(dims: usize) -> Self;
 
-    fn shape_at(&self, depth: usize) -> Option<usize> {
-        self.borrow().get(depth).copied()
+    fn shape_at(&self, dims: usize) -> Option<usize> {
+        self.borrow().get(dims).copied()
     }
 
-    fn set_shape_at(&mut self, depth: usize, value: usize) {
+    fn set_shape_at(&mut self, dims: usize, value: usize) {
         // Check that we're replacing a `0` placeholder.
-        debug_assert_eq!(self.shape_at(depth), Some(0));
-        self.borrow_mut()[depth] = value;
+        debug_assert_eq!(self.shape_at(dims), Some(0));
+        self.borrow_mut()[dims] = value;
     }
 }
 
 impl Shape for Box<[usize]> {
-    const MIN_DEPTH: usize = 0;
-    const MAX_DEPTH: usize = usize::MAX;
+    const MIN_DIMS: usize = 0;
+    const MAX_DIMS: usize = usize::MAX;
 
-    fn new_zeroed(depth: usize) -> Self {
-        vec![0; depth].into_boxed_slice()
+    fn new_zeroed(dims: usize) -> Self {
+        vec![0; dims].into_boxed_slice()
     }
 }
 
 impl<const DIMS: usize> Shape for [usize; DIMS] {
-    const MIN_DEPTH: usize = DIMS;
-    const MAX_DEPTH: usize = DIMS;
+    const MIN_DIMS: usize = DIMS;
+    const MAX_DIMS: usize = DIMS;
 
-    fn new_zeroed(depth: usize) -> Self {
-        debug_assert_eq!(depth, DIMS);
+    fn new_zeroed(dims: usize) -> Self {
+        debug_assert_eq!(dims, DIMS);
         [0; DIMS]
     }
 }
 
 impl<const MAX_DIMS: usize> Shape for ArrayVec<usize, MAX_DIMS> {
-    const MIN_DEPTH: usize = 0;
-    const MAX_DEPTH: usize = MAX_DIMS;
+    const MIN_DIMS: usize = 0;
+    const MAX_DIMS: usize = MAX_DIMS;
 
-    fn new_zeroed(depth: usize) -> Self {
-        debug_assert!(depth <= MAX_DIMS);
+    fn new_zeroed(dims: usize) -> Self {
+        debug_assert!(dims <= MAX_DIMS);
         let mut shape = ArrayVec::new();
-        shape.extend(std::iter::repeat(0).take(depth));
+        shape.extend(std::iter::repeat(0).take(dims));
         shape
     }
 }
@@ -64,15 +64,15 @@ impl<const MAX_DIMS: usize> Shape for ArrayVec<usize, MAX_DIMS> {
 struct Context<T, S> {
     data: Vec<T>,
     shape: Option<S>,
-    current_depth: usize,
+    current_dim: usize,
 }
 
 impl<'de, T: Debug + Deserialize<'de>, S: Shape> Context<T, S> {
     fn got_number<E: Error>(&mut self) -> Result<(), E> {
         match &self.shape {
             Some(shape) => {
-                if self.current_depth < shape.borrow().len() {
-                    // We've seen a sequence at this depth before, but got a number now.
+                if self.current_dim < shape.borrow().len() {
+                    // We've seen a sequence at this dims before, but got a number now.
                     return Err(E::invalid_type(
                         serde::de::Unexpected::Other("a single number"),
                         &"a sequence",
@@ -80,18 +80,18 @@ impl<'de, T: Debug + Deserialize<'de>, S: Shape> Context<T, S> {
                 }
             }
             None => {
-                // We've seen a sequence at this depth before, but got a number now.
+                // We've seen a sequence at this dims before, but got a number now.
                 // Once we've seen a numeric value for the first time, this means we reached the innermost dimension.
                 // From now on, start collecting shape info.
                 // To start, allocate the dimension lenghs with placeholders.
-                if self.current_depth < S::MIN_DEPTH {
+                if self.current_dim < S::MIN_DIMS {
                     return Err(Error::custom(format_args!(
-                        "didn't reach the expected minimum depth {}, got {}",
-                        S::MIN_DEPTH,
-                        self.current_depth,
+                        "didn't reach the expected minimum dims {}, got {}",
+                        S::MIN_DIMS,
+                        self.current_dim,
                     )));
                 }
-                self.shape = Some(S::new_zeroed(self.current_depth));
+                self.shape = Some(S::new_zeroed(self.current_dim));
             }
         }
         Ok(())
@@ -126,10 +126,10 @@ impl<'de, T: Deserialize<'de> + Debug, S: Shape> Visitor<'de> for &mut Context<T
             // This is not the first pass anymore, so we've seen all the dimensions.
             // Check that the current dimension has seen a sequence before and return
             // its expected length.
-            let expected_len = shape.shape_at(self.current_depth).ok_or_else(|| {
+            let expected_len = shape.shape_at(self.current_dim).ok_or_else(|| {
                 Error::invalid_type(serde::de::Unexpected::Seq, &"a single number")
             })?;
-            self.current_depth += 1;
+            self.current_dim += 1;
             // Consume the expected number of elements.
             for _ in 0..expected_len {
                 seq.next_element_seed(&mut *self)?
@@ -140,15 +140,15 @@ impl<'de, T: Deserialize<'de> + Debug, S: Shape> Visitor<'de> for &mut Context<T
             if seq.next_element::<IgnoredAny>()?.is_some() {
                 return Err(Error::custom("expected end of sequence"));
             }
-            self.current_depth -= 1;
+            self.current_dim -= 1;
         } else {
             // We're still in the first pass, so we don't know the shape yet.
             debug_assert!(self.shape.is_none());
-            self.current_depth += 1;
-            if self.current_depth > S::MAX_DEPTH {
+            self.current_dim += 1;
+            if self.current_dim > S::MAX_DIMS {
                 return Err(Error::custom(format_args!(
-                    "maximum depth of {} exceeded",
-                    S::MAX_DEPTH
+                    "maximum dims of {} exceeded",
+                    S::MAX_DIMS
                 )));
             }
             // Consume & count all the elements.
@@ -156,13 +156,13 @@ impl<'de, T: Deserialize<'de> + Debug, S: Shape> Visitor<'de> for &mut Context<T
             while seq.next_element_seed(&mut *self)?.is_some() {
                 len += 1;
             }
-            self.current_depth -= 1;
+            self.current_dim -= 1;
             // Replace the placeholder `0` with the actual length.
             let shape = self
                 .shape
                 .as_mut()
                 .expect("internal error: shape should be allocated by now");
-            shape.set_shape_at(self.current_depth, len);
+            shape.set_shape_at(self.current_dim, len);
         }
         Ok(())
     }
@@ -219,7 +219,7 @@ where
     let mut context = Context {
         data: Vec::new(),
         shape: None,
-        current_depth: 0,
+        current_dim: 0,
     };
     deserializer.deserialize_any(&mut context)?;
     Ok(A::from_shape_and_data(context.shape.unwrap(), context.data))
