@@ -1,8 +1,13 @@
 ---
 source: src/nalgebra.rs
-expression: "deserialize_json!([1, 2, 3, 4]).unwrap_err()"
+expression: "roundtrip!([1, 2, 3, 4]).unwrap_err()"
 ---
 
- 1 | [1, 2, 3, 4]
-   |   ^ didn't reach the expected minimum dims 2, got 1 at line 1 column 2
+   | [
+ 2 |   1,
+   |    ^ didn't reach the expected minimum dims 2, got 1 at line 2 column 3
+   |   2,
+   |   3,
+   |   4
+   | ]
 

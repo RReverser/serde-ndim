@@ -1,8 +1,12 @@
 ---
 source: src/nalgebra.rs
-expression: "deserialize_json!([[1, 2, 3, 4], [5, 6, 8]]).unwrap_err()"
+expression: "roundtrip!([[1, 2, 3, 4], [5, 6, 8]]).unwrap_err()"
 ---
 
- 1 | [[1, 2, 3, 4], [5, 6, 8]]
-   |                         ^ expected more elements at line 1 column 24
+    |     5,
+    |     6,
+    |     8
+ 12 |   ]
+    |    ^ expected more elements at line 12 column 3
+    | ]
 

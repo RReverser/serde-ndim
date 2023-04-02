@@ -32,25 +32,36 @@ impl<T, R: Dim, C: Dim, S: RawStorage<T, R, C> + IsContiguous> NDim for Matrix<T
 mod tests {
     use format_serde_error::SerdeError;
     use nalgebra::DMatrix;
-    use serde::Deserialize;
+    use serde::{Deserialize, Serialize};
+    use serde_json::json;
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, Serialize, Deserialize)]
     #[serde(transparent)]
     struct WrapMatrix(#[serde(with = "crate")] DMatrix<i32>);
 
-    macro_rules! deserialize_json {
-        ($json:expr) => {{
-            let json = stringify!($json);
-            match serde_json::from_str::<WrapMatrix>(json) {
-                Ok(WrapMatrix(matrix)) => Ok(matrix),
-                Err(err) => Err(SerdeError::new(json.to_owned(), err)),
+    macro_rules! roundtrip {
+        ($json:tt) => {{
+            let json = json!($json);
+            let json_string = serde_json::to_string_pretty(&json).unwrap();
+            // using `from_str` for better errors with locations
+            match serde_json::from_str::<WrapMatrix>(&json_string) {
+                Ok(wrap) => {
+                    let new_json = serde_json::to_value(&wrap).unwrap();
+                    assert_eq!(
+                        json,
+                        new_json,
+                        "Roundtrip mismatch\nOriginal input: {json:#}\nAfter roundtrip: {new_json:#}"
+                    );
+                    Ok(wrap.0)
+                }
+                Err(err) => Err(SerdeError::new(json_string, err)),
             }
         }};
     }
 
     #[test]
     fn test_matrix() {
-        let matrix = deserialize_json!([[1, 2, 3, 4], [5, 6, 7, 8]]).unwrap();
+        let matrix = roundtrip!([[1, 2, 3, 4], [5, 6, 7, 8]]).unwrap();
         // not using `.shape()` to explicitly check that it's column-major
         assert_eq!((matrix.ncols(), matrix.nrows()), (2, 4));
         insta::assert_display_snapshot!(matrix);
@@ -58,12 +69,12 @@ mod tests {
 
     #[test]
     fn test_smaller_dimension_count() {
-        insta::assert_display_snapshot!(deserialize_json!([1, 2, 3, 4]).unwrap_err());
+        insta::assert_display_snapshot!(roundtrip!([1, 2, 3, 4]).unwrap_err());
     }
 
     #[test]
     fn test_larger_dimension_count() {
-        insta::assert_display_snapshot!(deserialize_json!([
+        insta::assert_display_snapshot!(roundtrip!([
             [[1, 2, 3, 4], [5, 6, 7, 8]],
             [[9, 10, 11, 12], [13, 14, 15, 16]],
             [[17, 18, 19, 20], [21, 22, 23, 24]]
@@ -73,18 +84,16 @@ mod tests {
 
     #[test]
     fn test_inner_mismatch() {
-        insta::assert_display_snapshot!(deserialize_json!([[1, 2, 3, 4], [5, 6, 8]]).unwrap_err());
+        insta::assert_display_snapshot!(roundtrip!([[1, 2, 3, 4], [5, 6, 8]]).unwrap_err());
     }
 
     #[test]
     fn test_inner_mismatch_during_first_descent() {
-        insta::assert_display_snapshot!(
-            deserialize_json!([[1, [2], 3, 4], [5, 6, 7, 8]]).unwrap_err()
-        );
+        insta::assert_display_snapshot!(roundtrip!([[1, [2], 3, 4], [5, 6, 7, 8]]).unwrap_err());
     }
 
     #[test]
     fn test_invalid_type() {
-        insta::assert_display_snapshot!(deserialize_json!([[false]]).unwrap_err());
+        insta::assert_display_snapshot!(roundtrip!([[false]]).unwrap_err());
     }
 }
