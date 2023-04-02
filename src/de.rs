@@ -2,7 +2,6 @@ use arrayvec::ArrayVec;
 use serde::de::{DeserializeSeed, Error, IgnoredAny, IntoDeserializer, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer};
 use std::borrow::BorrowMut;
-use std::fmt::Debug;
 
 macro_rules! forward_visitors {
     ($(fn $method:ident ($arg:ty);)*) => ($(
@@ -12,7 +11,7 @@ macro_rules! forward_visitors {
     )*);
 }
 
-pub trait Shape: BorrowMut<[usize]> + Debug {
+pub trait Shape: BorrowMut<[usize]> {
     const MIN_DIMS: usize;
     const MAX_DIMS: usize;
 
@@ -67,7 +66,7 @@ struct Context<T, S> {
     current_dim: usize,
 }
 
-impl<'de, T: Debug + Deserialize<'de>, S: Shape> Context<T, S> {
+impl<'de, T: Deserialize<'de>, S: Shape> Context<T, S> {
     fn got_number<E: Error>(&mut self) -> Result<(), E> {
         match &self.shape {
             Some(shape) => {
@@ -112,7 +111,7 @@ impl<'de, T: Debug + Deserialize<'de>, S: Shape> Context<T, S> {
     }
 }
 
-impl<'de, T: Deserialize<'de> + Debug, S: Shape> Visitor<'de> for &mut Context<T, S> {
+impl<'de, T: Deserialize<'de>, S: Shape> Visitor<'de> for &mut Context<T, S> {
     type Value = ();
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -192,7 +191,7 @@ impl<'de, T: Deserialize<'de> + Debug, S: Shape> Visitor<'de> for &mut Context<T
     }
 }
 
-impl<'de, T: Deserialize<'de> + Debug, S: Shape> DeserializeSeed<'de> for &mut Context<T, S> {
+impl<'de, T: Deserialize<'de>, S: Shape> DeserializeSeed<'de> for &mut Context<T, S> {
     type Value = ();
 
     fn deserialize<D>(self, deserializer: D) -> Result<(), D::Error>
@@ -213,7 +212,7 @@ pub trait MakeNDim {
 pub fn deserialize<'de, A, D>(deserializer: D) -> Result<A, D::Error>
 where
     A: MakeNDim,
-    A::Item: Deserialize<'de> + Debug,
+    A::Item: Deserialize<'de>,
     D: Deserializer<'de>,
 {
     let mut context = Context {

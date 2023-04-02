@@ -19,7 +19,7 @@ mod tests {
     #[serde(transparent)]
     #[serde(bound(
         serialize = "A: for<'a> crate::ser::NDim<'a>, for<'a> <A as crate::ser::NDim<'a>>::Item: Serialize",
-        deserialize = "A: crate::de::MakeNDim, A::Item: Deserialize<'de> + Debug"
+        deserialize = "A: crate::de::MakeNDim, A::Item: Deserialize<'de>"
     ))]
     struct TestWrapper<A>(#[serde(with = "crate")] A);
 
@@ -27,7 +27,7 @@ mod tests {
         json: serde_json::Value,
     ) -> Result<A, format_serde_error::SerdeError>
     where
-        <A as crate::de::MakeNDim>::Item: DeserializeOwned + Debug,
+        <A as crate::de::MakeNDim>::Item: DeserializeOwned,
         for<'a> <A as crate::ser::NDim<'a>>::Item: Serialize,
     {
         let json_string = serde_json::to_string_pretty(&json).unwrap();
