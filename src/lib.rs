@@ -6,4 +6,5 @@ mod nalgebra;
 #[cfg(feature = "ndarray")]
 mod ndarray;
 
-pub use de::{deserialize, MakeNDim};
+pub use de::deserialize;
+pub use ser::serialize;
