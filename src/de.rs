@@ -1,4 +1,3 @@
-use arrayvec::ArrayVec;
 use serde::de::{DeserializeSeed, Error, IgnoredAny, IntoDeserializer, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer};
 use std::borrow::BorrowMut;
@@ -11,19 +10,25 @@ macro_rules! forward_visitors {
     )*);
 }
 
+/// Multi-dimensional shape storage for deserialization.
 pub trait Shape: BorrowMut<[usize]> {
+    /// Minimum number of dimensions.
     const MIN_DIMS: usize;
+    /// Maximum number of dimensions.
     const MAX_DIMS: usize;
 
+    /// Create a new shape with all dimensions set to `0`.
     fn new_zeroed(dims: usize) -> Self;
 
-    fn shape_at(&self, dims: usize) -> Option<usize> {
+    /// Get the length of the given dimension (or `None` if the dimension is out of bounds).
+    fn dim_len(&self, dims: usize) -> Option<usize> {
         self.borrow().get(dims).copied()
     }
 
-    fn set_shape_at(&mut self, dims: usize, value: usize) {
+    /// Set the length of the given dimension.
+    fn set_dim_len(&mut self, dims: usize, value: usize) {
         // Check that we're replacing a `0` placeholder.
-        debug_assert_eq!(self.shape_at(dims), Some(0));
+        debug_assert_eq!(self.dim_len(dims), Some(0));
         self.borrow_mut()[dims] = value;
     }
 }
@@ -47,13 +52,14 @@ impl<const DIMS: usize> Shape for [usize; DIMS] {
     }
 }
 
-impl<const MAX_DIMS: usize> Shape for ArrayVec<usize, MAX_DIMS> {
+#[cfg(feature = "arrayvec")]
+impl<const MAX_DIMS: usize> Shape for arrayvec::ArrayVec<usize, MAX_DIMS> {
     const MIN_DIMS: usize = 0;
     const MAX_DIMS: usize = MAX_DIMS;
 
     fn new_zeroed(dims: usize) -> Self {
         debug_assert!(dims <= MAX_DIMS);
-        let mut shape = ArrayVec::new();
+        let mut shape = Self::new();
         shape.extend(std::iter::repeat(0).take(dims));
         shape
     }
@@ -125,7 +131,7 @@ impl<'de, T: Deserialize<'de>, S: Shape> Visitor<'de> for &mut Context<T, S> {
             // This is not the first pass anymore, so we've seen all the dimensions.
             // Check that the current dimension has seen a sequence before and return
             // its expected length.
-            let expected_len = shape.shape_at(self.current_dim).ok_or_else(|| {
+            let expected_len = shape.dim_len(self.current_dim).ok_or_else(|| {
                 Error::invalid_type(serde::de::Unexpected::Seq, &"a single number")
             })?;
             self.current_dim += 1;
@@ -161,7 +167,7 @@ impl<'de, T: Deserialize<'de>, S: Shape> Visitor<'de> for &mut Context<T, S> {
                 .shape
                 .as_mut()
                 .expect("internal error: shape should be allocated by now");
-            shape.set_shape_at(self.current_dim, len);
+            shape.set_dim_len(self.current_dim, len);
         }
         Ok(())
     }
@@ -202,13 +208,20 @@ impl<'de, T: Deserialize<'de>, S: Shape> DeserializeSeed<'de> for &mut Context<T
     }
 }
 
+/// A trait for types that can be constructed from a shape and a flat data.
 pub trait MakeNDim {
+    /// The shape of the multi-dimensional array.
     type Shape: Shape;
+    /// Array element type.
     type Item;
 
+    /// Construct a multi-dimensional array from a shape and a flat data.
     fn from_shape_and_data(shape: Self::Shape, data: Vec<Self::Item>) -> Self;
 }
 
+/// Deserialize a multi-dimensional column-major array from a recursively nested sequence of numbers.
+///
+/// See [crate-level documentation](../#Deserialization) for more details.
 pub fn deserialize<'de, A, D>(deserializer: D) -> Result<A, D::Error>
 where
     A: MakeNDim,

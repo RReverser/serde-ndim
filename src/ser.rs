@@ -1,11 +1,16 @@
 use serde::{Serialize, Serializer};
 use std::borrow::Borrow;
 
+/// Trait for types that can be serialized as N-dimensional arrays.
 pub trait NDim<'a> {
+    /// Shape of the multi-dimensional array (either borrowed or owned).
     type Shape: 'a + Borrow<[usize]>;
+    /// Array element type.
     type Item;
 
+    /// Get the shape of the multi-dimensional array.
     fn shape(&'a self) -> Self::Shape;
+    /// Get the flat data of the multi-dimensional array.
     fn data(&self) -> Option<&[Self::Item]>;
 }
 
@@ -35,6 +40,9 @@ impl<'ndim, 'data, T: Serialize> Serialize for SerializeWithShape<'ndim, 'data, 
     }
 }
 
+/// Serialize a multi-dimensional array as a recursively nested sequence of numbers.
+///
+/// The array must be contiguous and in column-major layout.
 pub fn serialize<'a, A: NDim<'a>, S: Serializer>(
     array: &'a A,
     serializer: S,

@@ -1,5 +1,11 @@
-mod de;
-mod ser;
+#![cfg_attr(feature = "docs_rs", feature(doc_auto_cfg))]
+#![warn(missing_docs)]
+#![doc = include_str!("../README.md")]
+
+/// Deserialization module.
+pub mod de;
+/// Serialization module.
+pub mod ser;
 
 #[cfg(feature = "nalgebra")]
 mod nalgebra;
