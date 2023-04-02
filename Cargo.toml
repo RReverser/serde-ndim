@@ -5,7 +5,7 @@ edition = "2021"
 description = "Serde support for n-dimensional arrays from self-describing formats"
 authors = ["Ingvar Stepanyan <me@rreverser.com>"]
 license = "MIT"
-keywords = ["array", "data-structure", "multidimensional", "matrix", "serde", "json", "serialization"]
+keywords = ["array", "data-structure", "multidimensional", "serde", "serialization"]
 categories = ["encoding", "data-structures", "science", "mathematics", "no-std" ]
 repository = "https://github.com/RReverser/serde-ndim"
 
