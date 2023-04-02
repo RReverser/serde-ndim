@@ -1,6 +1,8 @@
 use crate::de::MakeNDim;
 use crate::ser::NDim;
 use ndarray::{Array, ArrayBase, ArrayD, Data, Dim, Dimension, IntoDimension};
+use std::boxed::Box;
+use std::vec::Vec;
 
 impl<T, const N: usize> MakeNDim for Array<T, Dim<[usize; N]>>
 where

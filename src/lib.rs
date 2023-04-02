@@ -1,6 +1,10 @@
 #![cfg_attr(feature = "docs_rs", feature(doc_auto_cfg))]
 #![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(not(feature = "std"))]
+extern crate alloc as std;
 
 /// Deserialization module.
 pub mod de;

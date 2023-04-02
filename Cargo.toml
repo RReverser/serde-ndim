@@ -5,6 +5,8 @@ edition = "2021"
 description = "Serde support for n-dimensional arrays from self-describing formats"
 authors = ["Ingvar Stepanyan <me@rreverser.com>"]
 license = "MIT"
+keywords = ["array", "data-structure", "multidimensional", "matrix", "serde", "json", "serialization"]
+categories = ["encoding", "data-structures", "science", "mathematics", "no-std" ]
 
 [dependencies]
 arrayvec = { version = "0.7.2", optional = true }
@@ -19,6 +21,8 @@ serde-ndim = { path = ".", features = ["test"] }
 serde_json = "1.0.95"
 
 [features]
+default = ["std"]
+std = []
 docs_rs = ["arrayvec", "nalgebra", "ndarray"]
 test = ["nalgebra", "ndarray", "serde/derive"]
 

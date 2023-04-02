@@ -1,6 +1,7 @@
 use crate::de::MakeNDim;
 use crate::ser::NDim;
 use nalgebra::{DMatrix, Dim, Dyn, IsContiguous, Matrix, RawStorage, VecStorage};
+use std::vec::Vec;
 
 impl<T> MakeNDim for DMatrix<T> {
     type Shape = [usize; 2];
