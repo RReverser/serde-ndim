@@ -1,4 +1,3 @@
-use core::iter;
 use serde::de::{DeserializeSeed, Error, IgnoredAny, IntoDeserializer, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer};
 use std::borrow::BorrowMut;
@@ -64,7 +63,7 @@ impl<const MAX_DIMS: usize> Shape for arrayvec::ArrayVec<usize, MAX_DIMS> {
     fn new_zeroed(dims: usize) -> Self {
         debug_assert!(dims <= MAX_DIMS);
         let mut shape = Self::new();
-        shape.extend(iter::repeat(0).take(dims));
+        shape.extend(core::iter::repeat(0).take(dims));
         shape
     }
 }
