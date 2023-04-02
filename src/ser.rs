@@ -1,12 +1,12 @@
 use serde::{Serialize, Serializer};
 use std::borrow::Borrow;
 
-pub trait NDim {
-    type Shape: Borrow<[usize]>;
+pub trait NDim<'a> {
+    type Shape: 'a + Borrow<[usize]>;
     type Item;
 
-    fn shape(&self) -> Self::Shape;
-    fn data(&self) -> &[Self::Item];
+    fn shape(&'a self) -> Self::Shape;
+    fn data(&self) -> Option<&[Self::Item]>;
 }
 
 struct SerializeWithShape<'ndim, 'data, T> {
@@ -35,19 +35,25 @@ impl<'ndim, 'data, T: Serialize> Serialize for SerializeWithShape<'ndim, 'data, 
     }
 }
 
-pub fn serialize<A: NDim, S: Serializer>(array: &A, serializer: S) -> Result<S::Ok, S::Error>
+pub fn serialize<'a, A: NDim<'a>, S: Serializer>(
+    array: &'a A,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
 where
     A::Item: Serialize,
 {
-    match array.shape().borrow().split_first() {
-        None => Err(serde::ser::Error::custom(
-            "array must be at least 1-dimensional",
-        )),
-        Some((&count, shape_rest)) => SerializeWithShape {
-            count,
-            shape_rest,
-            data: array.data(),
-        }
-        .serialize(serializer),
+    let shape = array.shape();
+    let (&count, shape_rest) = shape
+        .borrow()
+        .split_first()
+        .ok_or_else(|| serde::ser::Error::custom("array must be at least 1-dimensional"))?;
+    let data = array.data().ok_or_else(|| {
+        serde::ser::Error::custom("array must be contiguous and in column-major layout")
+    })?;
+    SerializeWithShape {
+        count,
+        shape_rest,
+        data,
     }
+    .serialize(serializer)
 }

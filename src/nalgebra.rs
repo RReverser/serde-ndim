@@ -14,7 +14,7 @@ impl<T> MakeNDim for DMatrix<T> {
     }
 }
 
-impl<T, R: Dim, C: Dim, S: RawStorage<T, R, C> + IsContiguous> NDim for Matrix<T, R, C, S> {
+impl<'a, T, R: Dim, C: Dim, S: RawStorage<T, R, C> + IsContiguous> NDim<'a> for Matrix<T, R, C, S> {
     type Shape = [usize; 2];
     type Item = T;
 
@@ -23,40 +23,21 @@ impl<T, R: Dim, C: Dim, S: RawStorage<T, R, C> + IsContiguous> NDim for Matrix<T
         [cols, rows]
     }
 
-    fn data(&self) -> &[Self::Item] {
-        self.as_slice()
+    fn data(&self) -> Option<&[Self::Item]> {
+        Some(self.as_slice())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use format_serde_error::SerdeError;
+    use crate::tests::test_roundtrip;
     use nalgebra::DMatrix;
-    use serde::{Deserialize, Serialize};
     use serde_json::json;
 
-    #[derive(Debug, Serialize, Deserialize)]
-    #[serde(transparent)]
-    struct WrapMatrix(#[serde(with = "crate")] DMatrix<i32>);
-
     macro_rules! roundtrip {
-        ($json:tt) => {{
-            let json = json!($json);
-            let json_string = serde_json::to_string_pretty(&json).unwrap();
-            // using `from_str` for better errors with locations
-            match serde_json::from_str::<WrapMatrix>(&json_string) {
-                Ok(wrap) => {
-                    let new_json = serde_json::to_value(&wrap).unwrap();
-                    assert_eq!(
-                        json,
-                        new_json,
-                        "Roundtrip mismatch\nOriginal input: {json:#}\nAfter roundtrip: {new_json:#}"
-                    );
-                    Ok(wrap.0)
-                }
-                Err(err) => Err(SerdeError::new(json_string, err)),
-            }
-        }};
+        ($json:tt) => {
+            test_roundtrip::<DMatrix<i32>>(json!($json))
+        };
     }
 
     #[test]

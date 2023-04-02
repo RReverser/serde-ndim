@@ -1,8 +1,14 @@
 ---
 source: src/ndarray.rs
-expression: "deserialize_json!([[[1, 2, 3, [4]]]]).unwrap_err()"
+expression: "roundtrip!(ArrayD < i32 >, [[[1, 2, 3, [4]]]]).unwrap_err()"
 ---
 
- 1 | [[[1, 2, 3, [4]]]]
-   |              ^ invalid type: sequence, expected a single number at line 1 column 13
+   |     2,
+   |     3,
+   |     [
+ 8 |       4
+   |       ^ invalid type: sequence, expected a single number at line 8 column 8
+   |     ]
+   |   ]
+   | ]
 

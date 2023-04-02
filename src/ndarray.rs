@@ -1,5 +1,6 @@
 use crate::de::MakeNDim;
-use ndarray::{Array, ArrayD, Dim, Dimension, IntoDimension};
+use crate::ser::NDim;
+use ndarray::{Array, ArrayBase, ArrayD, Data, Dim, Dimension, IntoDimension};
 
 impl<T, const N: usize> MakeNDim for Array<T, Dim<[usize; N]>>
 where
@@ -31,31 +32,33 @@ impl<T> MakeNDim for ArrayD<T> {
     }
 }
 
+impl<'a, S: Data, D: Dimension> NDim<'a> for ArrayBase<S, D> {
+    type Shape = &'a [usize];
+    type Item = S::Elem;
+
+    fn shape(&'a self) -> Self::Shape {
+        ArrayBase::shape(self)
+    }
+
+    fn data(&self) -> Option<&[Self::Item]> {
+        self.as_slice()
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::de::MakeNDim;
-    use format_serde_error::SerdeError;
+    use crate::tests::test_roundtrip;
     use ndarray::{Array3, ArrayD};
-    use serde::Deserialize;
 
-    #[derive(Debug, Deserialize)]
-    #[serde(transparent)]
-    #[serde(bound(deserialize = "A: MakeNDim, A::Item: Deserialize<'de> + std::fmt::Debug"))]
-    struct WrapArray<A>(#[serde(with = "crate")] A);
-
-    macro_rules! deserialize_json {
-        ($T:ty, $json:expr) => {{
-            let json = stringify!($json);
-            match serde_json::from_str::<WrapArray<$T>>(json) {
-                Ok(WrapArray(array)) => Ok(array),
-                Err(err) => Err(SerdeError::new(json.to_owned(), err)),
-            }
-        }};
+    macro_rules! roundtrip {
+        ($T:ty, $json:tt) => {
+            test_roundtrip::<$T>(serde_json::json!($json))
+        };
     }
 
     #[test]
     fn test_static_array() {
-        let array = deserialize_json!(
+        let array = roundtrip!(
             Array3<i32>,
             [
                 [[1, 2, 3, 4], [5, 6, 7, 8]],
@@ -71,7 +74,7 @@ mod tests {
 
     #[test]
     fn test_dyn_array() {
-        let array = deserialize_json!(
+        let array = roundtrip!(
             ArrayD<i32>,
             [
                 [[1, 2, 3, 4], [5, 6, 7, 8]],
@@ -88,20 +91,20 @@ mod tests {
     #[test]
     fn test_smaller_dimension_count() {
         insta::assert_display_snapshot!(
-            deserialize_json!(Array3<i32>, [[1, 2, 3], [4, 5, 6]]).unwrap_err()
+            roundtrip!(Array3<i32>, [[1, 2, 3], [4, 5, 6]]).unwrap_err()
         );
     }
 
     #[test]
     fn test_larger_dimension_count() {
         insta::assert_display_snapshot!(
-            deserialize_json!(Array3<i32>, [[[[1, 2, 3], [4, 5, 6]]]]).unwrap_err()
+            roundtrip!(Array3<i32>, [[[[1, 2, 3], [4, 5, 6]]]]).unwrap_err()
         );
     }
 
     #[test]
     fn test_inner_mismatch() {
-        insta::assert_display_snapshot!(deserialize_json!(
+        insta::assert_display_snapshot!(roundtrip!(
             ArrayD<i32>,
             [[[1, 2, 3, 4], [5, 6, 7, 8]], [9, 10]]
         )
@@ -110,13 +113,11 @@ mod tests {
 
     #[test]
     fn test_inner_mismatch_during_first_descent() {
-        insta::assert_display_snapshot!(
-            deserialize_json!(ArrayD<i32>, [[[1, 2, 3, [4]]]]).unwrap_err()
-        );
+        insta::assert_display_snapshot!(roundtrip!(ArrayD<i32>, [[[1, 2, 3, [4]]]]).unwrap_err());
     }
 
     #[test]
     fn test_invalid_type() {
-        insta::assert_display_snapshot!(deserialize_json!(ArrayD<i32>, [[[false]]]).unwrap_err());
+        insta::assert_display_snapshot!(roundtrip!(ArrayD<i32>, [[[false]]]).unwrap_err());
     }
 }

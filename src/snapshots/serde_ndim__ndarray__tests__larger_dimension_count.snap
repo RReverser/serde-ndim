@@ -1,8 +1,14 @@
 ---
 source: src/ndarray.rs
-expression: "deserialize_json!(Array3 < i32 >, [[[[1, 2, 3], [4, 5, 6]]]]).unwrap_err()"
+expression: "roundtrip!(Array3 < i32 >, [[[[1, 2, 3], [4, 5, 6]]]]).unwrap_err()"
 ---
 
- 1 | [[[[1, 2, 3], [4, 5, 6]]]]
-   |     ^ maximum dims of 3 exceeded at line 1 column 4
+   | [
+   |   [
+   |     [
+ 5 |       1,
+   |       ^ maximum dims of 3 exceeded at line 5 column 8
+   |       2,
+   |       3
+   |     ],
 
