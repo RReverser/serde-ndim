@@ -46,6 +46,9 @@ The tricky bit is that deserialization is built to learn and ensure internal con
 Constructors for [`ndarray::Array`](https://docs.rs/ndarray/latest/ndarray/type.Array.html) and [`nalgebra::DMatrix`](https://docs.rs/nalgebra/latest/nalgebra/base/type.DMatrix.html) are provided out of the box under the `ndarray` and `nalgebra` features respectively, so you can use them like this:
 
 ```rust
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize, Serialize)]
 struct MyStruct {
     #[serde(with = "serde_ndim")]
     ndarray: ndarray::ArrayD<f32>,
