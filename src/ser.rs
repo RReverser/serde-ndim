@@ -1,40 +1,44 @@
 use serde::{Serialize, Serializer};
 use std::borrow::Borrow;
+use std::cell::RefCell;
 
 /// Trait for types that can be serialized as N-dimensional arrays.
-pub trait NDim<'a> {
+///
+/// This needs to be implemented on references to arrays, not on arrays themselves,
+pub trait NDim {
     /// Shape of the multi-dimensional array (either borrowed or owned).
-    type Shape: 'a + Borrow<[usize]>;
-    /// Array element type.
-    type Item;
+    type Shape: Borrow<[usize]>;
+    /// Iterator over array elements in the column-major order.
+    type IterColumnMajor: Iterator;
 
     /// Get the shape of the multi-dimensional array.
-    fn shape(&'a self) -> Self::Shape;
-    /// Get the flat data of the multi-dimensional array.
-    fn data(&self) -> Option<&[Self::Item]>;
+    fn shape(self) -> Self::Shape;
+    /// Iterate over array elements in the column-major order.
+    fn iter_column_major(self) -> Self::IterColumnMajor;
 }
 
-struct SerializeWithShape<'ndim, 'data, T> {
+struct SerializeWithShape<'ndim, 'iter, I> {
     count: usize,
     shape_rest: &'ndim [usize],
-    data: &'data [T],
+    iter: &'iter RefCell<I>,
 }
 
-impl<'ndim, 'data, T: Serialize> Serialize for SerializeWithShape<'ndim, 'data, T> {
+impl<'ndim, 'iter, I: Iterator> Serialize for SerializeWithShape<'ndim, 'iter, I>
+where
+    I::Item: Serialize,
+{
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         match self.shape_rest.split_first() {
-            None => self.data.serialize(serializer),
+            None => serializer.collect_seq((&mut *self.iter.borrow_mut()).take(self.count)),
             Some((&next_count, next_shape_rest)) => {
-                serializer.collect_seq(self.data.chunks_exact(self.data.len() / self.count).map(
-                    |chunk| SerializeWithShape {
-                        count: next_count,
-                        shape_rest: next_shape_rest,
-                        data: chunk,
-                    },
-                ))
+                serializer.collect_seq((0..self.count).map(|_| SerializeWithShape {
+                    count: next_count,
+                    shape_rest: next_shape_rest,
+                    iter: self.iter,
+                }))
             }
         }
     }
@@ -43,25 +47,22 @@ impl<'ndim, 'data, T: Serialize> Serialize for SerializeWithShape<'ndim, 'data, 
 /// Serialize a multi-dimensional array as a recursively nested sequence of numbers.
 ///
 /// The array must be contiguous and in column-major layout.
-pub fn serialize<'a, A: NDim<'a>, S: Serializer>(
-    array: &'a A,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
+pub fn serialize<'a, A, S: Serializer>(array: &'a A, serializer: S) -> Result<S::Ok, S::Error>
 where
-    A::Item: Serialize,
+    &'a A: NDim,
+    <<&'a A as NDim>::IterColumnMajor as Iterator>::Item: Serialize,
 {
     let shape = array.shape();
     let (&count, shape_rest) = shape
         .borrow()
         .split_first()
         .ok_or_else(|| serde::ser::Error::custom("array must be at least 1-dimensional"))?;
-    let data = array.data().ok_or_else(|| {
-        serde::ser::Error::custom("array must be contiguous and in column-major layout")
-    })?;
+    let iter = RefCell::new(array.iter_column_major());
+
     SerializeWithShape {
         count,
         shape_rest,
-        data,
+        iter: &iter,
     }
     .serialize(serializer)
 }

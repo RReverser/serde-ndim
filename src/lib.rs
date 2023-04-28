@@ -28,17 +28,18 @@ mod tests {
     #[derive(Debug, Serialize, Deserialize)]
     #[serde(transparent)]
     #[serde(bound(
-        serialize = "A: for<'a> crate::ser::NDim<'a>, for<'a> <A as crate::ser::NDim<'a>>::Item: Serialize",
+        serialize = "for<'a> &'a A: crate::ser::NDim, for<'a> <<&'a A as crate::ser::NDim>::IterColumnMajor as Iterator>::Item: Serialize",
         deserialize = "A: crate::de::MakeNDim, A::Item: Deserialize<'de>"
     ))]
-    struct TestWrapper<A>(#[serde(with = "crate")] A);
+    pub(crate) struct TestWrapper<A>(#[serde(with = "crate")] pub(crate) A);
 
-    pub(crate) fn test_roundtrip<A: for<'a> crate::ser::NDim<'a> + crate::de::MakeNDim>(
+    pub(crate) fn test_roundtrip<A: crate::de::MakeNDim>(
         json: serde_json::Value,
     ) -> Result<A, format_serde_error::SerdeError>
     where
+        for<'a> &'a A: crate::ser::NDim,
+        for<'a> <<&'a A as crate::ser::NDim>::IterColumnMajor as Iterator>::Item: Serialize,
         <A as crate::de::MakeNDim>::Item: DeserializeOwned,
-        for<'a> <A as crate::ser::NDim<'a>>::Item: Serialize,
     {
         let json_string = serde_json::to_string_pretty(&json).unwrap();
         // using `from_str` for better errors with locations

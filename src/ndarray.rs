@@ -34,23 +34,26 @@ impl<T> MakeNDim for ArrayD<T> {
     }
 }
 
-impl<'a, S: Data, D: Dimension> NDim<'a> for ArrayBase<S, D> {
+impl<'a, S: Data, D: Dimension> NDim for &'a ArrayBase<S, D>
+where
+    S::Elem: Copy,
+{
     type Shape = &'a [usize];
-    type Item = S::Elem;
+    type IterColumnMajor = std::iter::Copied<<Self as IntoIterator>::IntoIter>;
 
-    fn shape(&'a self) -> Self::Shape {
+    fn shape(self) -> Self::Shape {
         ArrayBase::shape(self)
     }
 
-    fn data(&self) -> Option<&[Self::Item]> {
-        self.as_slice()
+    fn iter_column_major(self) -> Self::IterColumnMajor {
+        self.iter().copied()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::test_roundtrip;
-    use ndarray::{Array3, ArrayD};
+    use crate::tests::{test_roundtrip, TestWrapper};
+    use ndarray::{Array2, Array3, ArrayD};
 
     macro_rules! roundtrip {
         ($T:ty, $json:tt) => {
@@ -72,6 +75,21 @@ mod tests {
         assert_eq!(array.shape(), &[3, 2, 4]);
         assert!(array.is_standard_layout());
         insta::assert_display_snapshot!(array);
+    }
+
+    #[test]
+    fn test_static_array_in_non_standard_layout() {
+        let mut array = ndarray::array![[1, 2, 3], [4, 5, 6]];
+        array.swap_axes(0, 1);
+        assert_eq!(array.shape(), &[3, 2]);
+        assert!(!array.is_standard_layout());
+        let json = serde_json::to_string_pretty(&TestWrapper(array.clone())).unwrap();
+        insta::assert_display_snapshot!(json);
+        let array2 = serde_json::from_str::<TestWrapper<Array2<i32>>>(&json)
+            .unwrap()
+            .0;
+        assert!(array2.is_standard_layout());
+        assert_eq!(array, array2);
     }
 
     #[test]

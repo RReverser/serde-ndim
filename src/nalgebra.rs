@@ -1,6 +1,6 @@
 use crate::de::MakeNDim;
 use crate::ser::NDim;
-use nalgebra::{DMatrix, Dim, Dyn, IsContiguous, Matrix, RawStorage, VecStorage};
+use nalgebra::{DMatrix, Dim, Dyn, IsContiguous, Matrix, RawStorage, Scalar, VecStorage};
 use std::vec::Vec;
 
 impl<T> MakeNDim for DMatrix<T> {
@@ -15,17 +15,19 @@ impl<T> MakeNDim for DMatrix<T> {
     }
 }
 
-impl<'a, T, R: Dim, C: Dim, S: RawStorage<T, R, C> + IsContiguous> NDim<'a> for Matrix<T, R, C, S> {
+impl<'a, T: Scalar + Copy, R: Dim, C: Dim, S: RawStorage<T, R, C> + IsContiguous> NDim
+    for &'a Matrix<T, R, C, S>
+{
     type Shape = [usize; 2];
-    type Item = T;
+    type IterColumnMajor = std::iter::Copied<<Self as IntoIterator>::IntoIter>;
 
-    fn shape(&self) -> Self::Shape {
+    fn shape(self) -> Self::Shape {
         let (rows, cols) = self.shape();
         [cols, rows]
     }
 
-    fn data(&self) -> Option<&[Self::Item]> {
-        Some(self.as_slice())
+    fn iter_column_major(self) -> Self::IterColumnMajor {
+        self.iter().copied()
     }
 }
 
