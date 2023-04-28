@@ -4,17 +4,15 @@ use std::cell::RefCell;
 
 /// Trait for types that can be serialized as N-dimensional arrays.
 ///
-/// This needs to be implemented on references to arrays, not on arrays themselves,
-pub trait NDim {
+/// This needs to be implemented on references to arrays, not on arrays themselves.
+///
+/// The `IntoIterator` implementation should return the elements in column-major order.
+pub trait NDim: IntoIterator {
     /// Shape of the multi-dimensional array (either borrowed or owned).
     type Shape: Borrow<[usize]>;
-    /// Iterator over array elements in the column-major order.
-    type IterColumnMajor: Iterator;
 
     /// Get the shape of the multi-dimensional array.
     fn shape(self) -> Self::Shape;
-    /// Iterate over array elements in the column-major order.
-    fn iter_column_major(self) -> Self::IterColumnMajor;
 }
 
 struct SerializeWithShape<'ndim, 'iter, I> {
@@ -50,14 +48,14 @@ where
 pub fn serialize<'a, A, S: Serializer>(array: &'a A, serializer: S) -> Result<S::Ok, S::Error>
 where
     &'a A: NDim,
-    <<&'a A as NDim>::IterColumnMajor as Iterator>::Item: Serialize,
+    <&'a A as IntoIterator>::Item: Serialize,
 {
     let shape = array.shape();
     let (&count, shape_rest) = shape
         .borrow()
         .split_first()
         .ok_or_else(|| serde::ser::Error::custom("array must be at least 1-dimensional"))?;
-    let iter = RefCell::new(array.iter_column_major());
+    let iter = RefCell::new(array.into_iter());
 
     SerializeWithShape {
         count,

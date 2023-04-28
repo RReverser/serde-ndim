@@ -39,14 +39,9 @@ where
     S::Elem: Copy,
 {
     type Shape = &'a [usize];
-    type IterColumnMajor = std::iter::Copied<<Self as IntoIterator>::IntoIter>;
 
     fn shape(self) -> Self::Shape {
         ArrayBase::shape(self)
-    }
-
-    fn iter_column_major(self) -> Self::IterColumnMajor {
-        self.iter().copied()
     }
 }
 

@@ -19,15 +19,10 @@ impl<'a, T: Scalar + Copy, R: Dim, C: Dim, S: RawStorage<T, R, C> + IsContiguous
     for &'a Matrix<T, R, C, S>
 {
     type Shape = [usize; 2];
-    type IterColumnMajor = std::iter::Copied<<Self as IntoIterator>::IntoIter>;
 
     fn shape(self) -> Self::Shape {
         let (rows, cols) = self.shape();
         [cols, rows]
-    }
-
-    fn iter_column_major(self) -> Self::IterColumnMajor {
-        self.iter().copied()
     }
 }
 

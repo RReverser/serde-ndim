@@ -28,7 +28,7 @@ mod tests {
     #[derive(Debug, Serialize, Deserialize)]
     #[serde(transparent)]
     #[serde(bound(
-        serialize = "for<'a> &'a A: crate::ser::NDim, for<'a> <<&'a A as crate::ser::NDim>::IterColumnMajor as Iterator>::Item: Serialize",
+        serialize = "for<'a> &'a A: crate::ser::NDim, for<'a> <&'a A as IntoIterator>::Item: Serialize",
         deserialize = "A: crate::de::MakeNDim, A::Item: Deserialize<'de>"
     ))]
     pub(crate) struct TestWrapper<A>(#[serde(with = "crate")] pub(crate) A);
@@ -38,7 +38,7 @@ mod tests {
     ) -> Result<A, format_serde_error::SerdeError>
     where
         for<'a> &'a A: crate::ser::NDim,
-        for<'a> <<&'a A as crate::ser::NDim>::IterColumnMajor as Iterator>::Item: Serialize,
+        for<'a> <&'a A as IntoIterator>::Item: Serialize,
         <A as crate::de::MakeNDim>::Item: DeserializeOwned,
     {
         let json_string = serde_json::to_string_pretty(&json).unwrap();
