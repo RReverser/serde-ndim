@@ -69,7 +69,7 @@ mod tests {
         .unwrap();
         assert_eq!(array.shape(), &[3, 2, 4]);
         assert!(array.is_standard_layout());
-        insta::assert_display_snapshot!(array);
+        insta::assert_snapshot!(array);
     }
 
     #[test]
@@ -79,7 +79,7 @@ mod tests {
         assert_eq!(array.shape(), &[3, 2]);
         assert!(!array.is_standard_layout());
         let json = serde_json::to_string_pretty(&TestWrapper(array.clone())).unwrap();
-        insta::assert_display_snapshot!(json);
+        insta::assert_snapshot!(json);
         let array2 = serde_json::from_str::<TestWrapper<Array2<i32>>>(&json)
             .unwrap()
             .0;
@@ -100,39 +100,33 @@ mod tests {
         .unwrap();
         assert_eq!(array.shape(), &[3, 2, 4]);
         assert!(array.is_standard_layout());
-        insta::assert_display_snapshot!(array);
+        insta::assert_snapshot!(array);
     }
 
     #[test]
     fn test_smaller_dimension_count() {
-        insta::assert_display_snapshot!(
-            roundtrip!(Array3<i32>, [[1, 2, 3], [4, 5, 6]]).unwrap_err()
-        );
+        insta::assert_snapshot!(roundtrip!(Array3<i32>, [[1, 2, 3], [4, 5, 6]]).unwrap_err());
     }
 
     #[test]
     fn test_larger_dimension_count() {
-        insta::assert_display_snapshot!(
-            roundtrip!(Array3<i32>, [[[[1, 2, 3], [4, 5, 6]]]]).unwrap_err()
-        );
+        insta::assert_snapshot!(roundtrip!(Array3<i32>, [[[[1, 2, 3], [4, 5, 6]]]]).unwrap_err());
     }
 
     #[test]
     fn test_inner_mismatch() {
-        insta::assert_display_snapshot!(roundtrip!(
-            ArrayD<i32>,
-            [[[1, 2, 3, 4], [5, 6, 7, 8]], [9, 10]]
-        )
-        .unwrap_err());
+        insta::assert_snapshot!(
+            roundtrip!(ArrayD<i32>, [[[1, 2, 3, 4], [5, 6, 7, 8]], [9, 10]]).unwrap_err()
+        );
     }
 
     #[test]
     fn test_inner_mismatch_during_first_descent() {
-        insta::assert_display_snapshot!(roundtrip!(ArrayD<i32>, [[[1, 2, 3, [4]]]]).unwrap_err());
+        insta::assert_snapshot!(roundtrip!(ArrayD<i32>, [[[1, 2, 3, [4]]]]).unwrap_err());
     }
 
     #[test]
     fn test_invalid_type() {
-        insta::assert_display_snapshot!(roundtrip!(ArrayD<i32>, [[[false]]]).unwrap_err());
+        insta::assert_snapshot!(roundtrip!(ArrayD<i32>, [[[false]]]).unwrap_err());
     }
 }

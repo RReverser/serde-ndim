@@ -43,17 +43,17 @@ mod tests {
         let matrix = roundtrip!([[1, 2, 3, 4], [5, 6, 7, 8]]).unwrap();
         // not using `.shape()` to explicitly check that it's column-major
         assert_eq!((matrix.ncols(), matrix.nrows()), (2, 4));
-        insta::assert_display_snapshot!(matrix);
+        insta::assert_snapshot!(matrix);
     }
 
     #[test]
     fn test_smaller_dimension_count() {
-        insta::assert_display_snapshot!(roundtrip!([1, 2, 3, 4]).unwrap_err());
+        insta::assert_snapshot!(roundtrip!([1, 2, 3, 4]).unwrap_err());
     }
 
     #[test]
     fn test_larger_dimension_count() {
-        insta::assert_display_snapshot!(roundtrip!([
+        insta::assert_snapshot!(roundtrip!([
             [[1, 2, 3, 4], [5, 6, 7, 8]],
             [[9, 10, 11, 12], [13, 14, 15, 16]],
             [[17, 18, 19, 20], [21, 22, 23, 24]]
@@ -63,16 +63,16 @@ mod tests {
 
     #[test]
     fn test_inner_mismatch() {
-        insta::assert_display_snapshot!(roundtrip!([[1, 2, 3, 4], [5, 6, 8]]).unwrap_err());
+        insta::assert_snapshot!(roundtrip!([[1, 2, 3, 4], [5, 6, 8]]).unwrap_err());
     }
 
     #[test]
     fn test_inner_mismatch_during_first_descent() {
-        insta::assert_display_snapshot!(roundtrip!([[1, [2], 3, 4], [5, 6, 7, 8]]).unwrap_err());
+        insta::assert_snapshot!(roundtrip!([[1, [2], 3, 4], [5, 6, 7, 8]]).unwrap_err());
     }
 
     #[test]
     fn test_invalid_type() {
-        insta::assert_display_snapshot!(roundtrip!([[false]]).unwrap_err());
+        insta::assert_snapshot!(roundtrip!([[false]]).unwrap_err());
     }
 }
