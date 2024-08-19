@@ -10,15 +10,14 @@ categories = ["encoding", "data-structures", "science", "mathematics", "no-std" 
 repository = "https://github.com/RReverser/serde-ndim"
 
 [dependencies]
-arrayvec = { version = "0.7.2", optional = true }
-nalgebra = { version = "0.32", default-features = false, features = ["alloc"], optional = true }
-ndarray = { version = "0.15", default-features = false, optional = true }
+arrayvec = { version = "0.7.0", optional = true }
+nalgebra = { version = "0.33.0", default-features = false, features = ["alloc"], optional = true }
+ndarray = { version = "0.16.0", default-features = false, optional = true }
 serde = "1.0"
 
 [dev-dependencies]
 format_serde_error = { version = "0.3.0", default-features = false, features = ["serde_json"] }
 insta = "1.29.0"
-nalgebra = { version = "0.32", default-features = false, features = ["macros"] }
 serde-ndim = { path = ".", features = ["test"] }
 serde_json = "1.0.95"
 
