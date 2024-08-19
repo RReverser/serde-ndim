@@ -1,6 +1,6 @@
+use core::cell::RefCell;
 use serde::{Serialize, Serializer};
 use std::borrow::Borrow;
-use std::cell::RefCell;
 
 /// Trait for types that can be serialized as N-dimensional arrays.
 ///
