@@ -38,10 +38,7 @@ where
     }
 }
 
-impl<'a, S: Data, D: Dimension> NDim for &'a ArrayBase<S, D>
-where
-    S::Elem: Copy,
-{
+impl<'a, S: Data, D: Dimension> NDim for &'a ArrayBase<S, D> {
     type Shape = &'a [usize];
 
     fn shape(self) -> Self::Shape {
