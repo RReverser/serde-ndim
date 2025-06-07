@@ -1,18 +1,19 @@
 use crate::de::MakeNDim;
 use crate::ser::NDim;
-use ndarray::{Array, ArrayBase, ArrayD, Data, Dim, Dimension, IntoDimension};
+use ndarray::{ArrayBase, Data, DataOwned, Dim, Dimension, IntoDimension, IxDyn};
 use std::boxed::Box;
 use std::vec::Vec;
 
-impl<T, const N: usize> MakeNDim for Array<T, Dim<[usize; N]>>
+impl<S, const N: usize> MakeNDim for ArrayBase<S, Dim<[usize; N]>>
 where
     // ndarray doesn't use const-generics for Dimension yet so we need
     // some extra bounds to filter out unsupported [usize; N] combinations.
     Dim<[usize; N]>: Dimension,
     [usize; N]: IntoDimension<Dim = Dim<[usize; N]>>,
+    S: DataOwned,
 {
     type Shape = [usize; N];
-    type Item = T;
+    type Item = S::Elem;
 
     fn from_shape_and_data(shape: Self::Shape, data: Vec<Self::Item>) -> Self {
         Self::from_shape_vec(shape, data)
@@ -20,9 +21,12 @@ where
     }
 }
 
-impl<T> MakeNDim for ArrayD<T> {
+impl<S> MakeNDim for ArrayBase<S, IxDyn>
+where
+    S: DataOwned,
+{
     type Shape = Box<[usize]>;
-    type Item = T;
+    type Item = S::Elem;
 
     fn from_shape_and_data(shape: Self::Shape, data: Vec<Self::Item>) -> Self {
         Self::from_shape_vec(
@@ -34,10 +38,7 @@ impl<T> MakeNDim for ArrayD<T> {
     }
 }
 
-impl<'a, S: Data, D: Dimension> NDim for &'a ArrayBase<S, D>
-where
-    S::Elem: Copy,
-{
+impl<'a, S: Data, D: Dimension> NDim for &'a ArrayBase<S, D> {
     type Shape = &'a [usize];
 
     fn shape(self) -> Self::Shape {
