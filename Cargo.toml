@@ -11,7 +11,7 @@ repository = "https://github.com/RReverser/serde-ndim"
 
 [dependencies]
 arrayvec = { version = "0.7.0", optional = true }
-nalgebra = { version = "0.33.0", default-features = false, features = ["alloc"], optional = true }
+nalgebra = { version = "0.34.0", default-features = false, features = ["alloc"], optional = true }
 ndarray = { version = "0.16.0", default-features = false, optional = true }
 serde = "1.0"
 
