@@ -127,7 +127,17 @@ mod tests {
     }
 
     #[test]
-    fn test_invalid_type() {
+    fn test_type_mismatch() {
         insta::assert_snapshot!(roundtrip!(ArrayD<i32>, [[[false]]]).unwrap_err());
+    }
+
+    #[test]
+    fn test_invalid_type() {
+        insta::assert_snapshot!(roundtrip!(ArrayD<i32>, [[["a"]]]).unwrap_err());
+    }
+
+    #[test]
+    fn test_bool_array() {
+        insta::assert_snapshot!(roundtrip!(ArrayD<bool>, [[[true, false], [false, true]]]).unwrap());
     }
 }

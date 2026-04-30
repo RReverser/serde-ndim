@@ -15,8 +15,8 @@ impl<T> MakeNDim for DMatrix<T> {
     }
 }
 
-impl<'a, T: Scalar + Copy, R: Dim, C: Dim, S: RawStorage<T, R, C> + IsContiguous> NDim
-    for &'a Matrix<T, R, C, S>
+impl<T: Scalar + Copy, R: Dim, C: Dim, S: RawStorage<T, R, C> + IsContiguous> NDim
+    for &'_ Matrix<T, R, C, S>
 {
     type Shape = [usize; 2];
 
@@ -33,14 +33,14 @@ mod tests {
     use serde_json::json;
 
     macro_rules! roundtrip {
-        ($json:tt) => {
-            test_roundtrip::<DMatrix<i32>>(json!($json))
+        ($T:ty, $json:tt) => {
+            test_roundtrip::<$T>(json!($json))
         };
     }
 
     #[test]
     fn test_matrix() {
-        let matrix = roundtrip!([[1, 2, 3, 4], [5, 6, 7, 8]]).unwrap();
+        let matrix = roundtrip!(DMatrix<i32>, [[1, 2, 3, 4], [5, 6, 7, 8]]).unwrap();
         // not using `.shape()` to explicitly check that it's column-major
         assert_eq!((matrix.ncols(), matrix.nrows()), (2, 4));
         insta::assert_snapshot!(matrix);
@@ -48,31 +48,46 @@ mod tests {
 
     #[test]
     fn test_smaller_dimension_count() {
-        insta::assert_snapshot!(roundtrip!([1, 2, 3, 4]).unwrap_err());
+        insta::assert_snapshot!(roundtrip!(DMatrix<i32>, [1, 2, 3, 4]).unwrap_err());
     }
 
     #[test]
     fn test_larger_dimension_count() {
-        insta::assert_snapshot!(roundtrip!([
-            [[1, 2, 3, 4], [5, 6, 7, 8]],
-            [[9, 10, 11, 12], [13, 14, 15, 16]],
-            [[17, 18, 19, 20], [21, 22, 23, 24]]
-        ])
+        insta::assert_snapshot!(roundtrip!(
+            DMatrix<i32>,
+            [
+                [[1, 2, 3, 4], [5, 6, 7, 8]],
+                [[9, 10, 11, 12], [13, 14, 15, 16]],
+                [[17, 18, 19, 20], [21, 22, 23, 24]]
+            ]
+        )
         .unwrap_err());
     }
 
     #[test]
     fn test_inner_mismatch() {
-        insta::assert_snapshot!(roundtrip!([[1, 2, 3, 4], [5, 6, 8]]).unwrap_err());
+        insta::assert_snapshot!(roundtrip!(DMatrix<i32>, [[1, 2, 3, 4], [5, 6, 8]]).unwrap_err());
     }
 
     #[test]
     fn test_inner_mismatch_during_first_descent() {
-        insta::assert_snapshot!(roundtrip!([[1, [2], 3, 4], [5, 6, 7, 8]]).unwrap_err());
+        insta::assert_snapshot!(
+            roundtrip!(DMatrix<i32>, [[1, [2], 3, 4], [5, 6, 7, 8]]).unwrap_err()
+        );
+    }
+
+    #[test]
+    fn test_type_mismatch() {
+        insta::assert_snapshot!(roundtrip!(DMatrix<i32>, [[false]]).unwrap_err());
     }
 
     #[test]
     fn test_invalid_type() {
-        insta::assert_snapshot!(roundtrip!([[false]]).unwrap_err());
+        insta::assert_snapshot!(roundtrip!(DMatrix<i32>, [["a"]]).unwrap_err());
+    }
+
+    #[test]
+    fn test_bool_matrix() {
+        insta::assert_snapshot!(roundtrip!(DMatrix<bool>, [[true, false], [false, true]]).unwrap());
     }
 }
