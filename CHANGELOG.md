@@ -11,8 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Other
 
-- Pass GITHUB_TOKEN to release-plz
-- Use canonical release-plz/action name and enable verbose logging
 - Automate releases via release-plz with OIDC trusted publishing ([#5](https://github.com/RReverser/serde-ndim/pull/5))
 - Add support for bool arrays ([#4](https://github.com/RReverser/serde-ndim/pull/4))
 - Fix docs.rs build ([#3](https://github.com/RReverser/serde-ndim/pull/3))
