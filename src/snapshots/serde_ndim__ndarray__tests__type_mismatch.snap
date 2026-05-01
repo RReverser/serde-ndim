@@ -1,0 +1,13 @@
+---
+source: src/ndarray.rs
+expression: "roundtrip!(ArrayD<i32>, [[[false]]]).unwrap_err()"
+---
+
+   | [
+   |   [
+   |     [
+ 4 |       false
+   |            ^ invalid type: boolean `false`, expected i32 at line 4 column 11
+   |     ]
+   |   ]
+   | ]

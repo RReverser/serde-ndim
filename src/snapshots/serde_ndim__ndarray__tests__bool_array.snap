@@ -1,0 +1,6 @@
+---
+source: src/ndarray.rs
+expression: "roundtrip!(ArrayD<bool>, [[[true, false], [false, true]]]).unwrap()"
+---
+[[[true, false],
+  [false, true]]]

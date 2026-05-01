@@ -1,12 +1,11 @@
 ---
 source: src/nalgebra.rs
-expression: "roundtrip!([[false]]).unwrap_err()"
+expression: "roundtrip!([['a']]).unwrap_err()"
 ---
 
    | [
    |   [
- 3 |     false
-   |          ^ invalid type: boolean `false`, expected a sequence or a single number at line 3 column 9
+ 3 |     "a"
+   |        ^ invalid type: string "a", expected a sequence or a single number at line 3 column 7
    |   ]
    | ]
-

@@ -1,0 +1,11 @@
+---
+source: src/nalgebra.rs
+expression: "roundtrip!([[false]]).unwrap_err()"
+---
+
+   | [
+   |   [
+ 3 |     false
+   |          ^ invalid type: boolean `false`, expected i32 at line 3 column 9
+   |   ]
+   | ]

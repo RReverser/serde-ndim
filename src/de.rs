@@ -176,6 +176,7 @@ impl<'de, T: Deserialize<'de>, S: Shape> Visitor<'de> for &mut Context<T, S> {
     }
 
     forward_visitors! {
+        fn visit_bool(bool);
         fn visit_i8(i8);
         fn visit_i16(i16);
         fn visit_i32(i32);

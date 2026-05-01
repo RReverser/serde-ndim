@@ -1,0 +1,9 @@
+---
+source: src/nalgebra.rs
+expression: "roundtrip!(DMatrix<bool>, [[true, false], [false, true]]).unwrap()"
+---
+
+  ┌           ┐
+  │ true false │
+  │ false true │
+  └           ┘
