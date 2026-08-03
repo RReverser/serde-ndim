@@ -14,5 +14,7 @@ jobs:
     - uses: actions/checkout@v3
     - name: Run tests
       run: cargo test --verbose
+    - name: Add no_std target
+      run: rustup target add thumbv7m-none-eabi
     - name: Verify no_std build
-      run: cargo check --no-default-features --verbose
+      run: cargo check --no-default-features --target thumbv7m-none-eabi --verbose
